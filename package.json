@@ -1,0 +1,32 @@
+{
+  "name": "histograph-data-geonames",
+  "version": "0.6.0",
+  "description": "Download and convert GeoNames data to Histograph NDJSON",
+  "main": "geonames.js",
+  "devDependencies": {
+    "jscs": "^1.10.0",
+    "jshint": "^2.6.0",
+    "tape": "^3.4.0"
+  },
+  "scripts": {
+    "test": "jshint *.js && jscs *.js"
+  },
+  "author": "Bert Spaan",
+  "license": "MIT",
+  "dependencies": {
+
+  },
+  "jshintConfig": {
+    "node": true,
+    "globalstrict": false,
+    "undef": true,
+    "unused": true,
+    "noarg": true
+  },
+  "jscsConfig": {
+    "preset": "airbnb",
+    "requireCamelCaseOrUpperCaseIdentifiers": null,
+    "disallowMultipleVarDecl": true,
+    "requireMultipleVarDecl": null
+  }
+}
