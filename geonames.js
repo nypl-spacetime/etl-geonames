@@ -1,7 +1,7 @@
 var fs = require('fs');
 var path = require('path');
 var request = require('request');
-var unzip = require('unzip');
+var yauzl = require('yauzl');
 var H = require('highland');
 var R = require('ramda');
 
@@ -103,14 +103,14 @@ function getAdminCodes(config, dir, callback) {
       callback(err);
     })
     .done(function() {
-      callback(null, adminCodes)
+      callback(null, adminCodes);
     });
 }
 
 function getRelations(config, adminCodes, obj) {
   var relations = [];
 
-  var codes = R.filter(R.identity, R.values(R.pick(adminKeys, obj)))
+  var codes = R.filter(R.identity, R.values(R.pick(adminKeys, obj)));
   if (codes.length === 3) {
     var parentObj = adminCodes.admin2[codes.join('.')];
 
@@ -192,6 +192,10 @@ function filterRow(filter, row, extraUris) {
 }
 
 function download(config, dir, writer, callback) {
+  var adminCodesFilenames = adminCodesFiles.map(function(c) {
+    return c.filename;
+  });
+
   H([
     allCountries,
     adminCodesFilenames
@@ -201,20 +205,29 @@ function download(config, dir, writer, callback) {
     .nfcall([])
     .series()
     .done(function() {
-      // Unzip allCountries
-      fs.createReadStream(path.join(dir, allCountries))
-        .pipe(unzip.Parse())
-        .on('entry', function(entry) {
+      yauzl.open(path.join(dir, allCountries), {lazyEntries: true}, function(err, zipfile) {
+        if (err) {
+          throw err;
+        }
+
+        zipfile.readEntry();
+        zipfile.on('entry', function(entry) {
           var allCountriesTxt = allCountries.replace('zip', 'txt');
-          if (entry.path === 'allCountries.txt') {
-            entry.pipe(fs.createWriteStream(path.join(dir, allCountriesTxt)));
-          } else {
-            entry.autodrain();
+          if (entry.fileName === allCountriesTxt) {
+            zipfile.openReadStream(entry, function(err, readStream) {
+              if (err) {
+                throw err;
+              }
+
+              readStream
+                .pipe(fs.createWriteStream(path.join(dir, allCountriesTxt)))
+                .on('end', function() {
+                  callback();
+                });
+            });
           }
-        })
-        .on('finish', function() {
-          callback();
         });
+      });
     });
 }
 
@@ -236,7 +249,7 @@ function convert(config, dir, writer, callback) {
         .map(R.split('\t'))
         .map(R.zipObj(allCountriesColumns))
         .filter(function(row) {
-          return R.flip(R.any)(config.filters)(R.curry(filterRow)(R.__, row, extraUris))
+          return R.flip(R.any)(config.filters)(R.curry(filterRow)(R.__, row, extraUris));
         })
         .map(function(row) {
           return H.curry(process, config, writer, row, adminCodes);

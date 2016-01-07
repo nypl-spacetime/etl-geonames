@@ -17,7 +17,7 @@
     "highland": "^2.5.1",
     "ramda": "^0.18.0",
     "request": "^2.67.0",
-    "unzip": "^0.1.11"
+    "yauzl": "^2.4.1"
   },
   "jshintConfig": {
     "node": true,
