@@ -14,8 +14,6 @@
   "author": "Bert Spaan",
   "license": "MIT",
   "dependencies": {
-    "async": "^1.5.0",
-    "csv": "^0.4.6",
     "highland": "^2.5.1",
     "ramda": "^0.18.0",
     "request": "^2.67.0",

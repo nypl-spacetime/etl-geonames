@@ -1,9 +1,7 @@
 var fs = require('fs');
 var path = require('path');
 var request = require('request');
-var csv = require('csv');
 var unzip = require('unzip');
-var async = require('async');
 var H = require('highland');
 var R = require('ramda');
 
@@ -11,12 +9,19 @@ var R = require('ramda');
 var baseUrl = 'http://download.geonames.org/export/dump/';
 var baseUri = 'http://sws.geonames.org/';
 var allCountries = 'allCountries.zip';
-var adminCodesFilenames = [
-  'admin2Codes.txt',
-  'admin1CodesASCII.txt'
+
+var adminCodesFiles = [
+  {
+    key: 'admin1',
+    filename: 'admin1CodesASCII.txt'
+  },
+  {
+    key: 'admin2',
+    filename: 'admin2Codes.txt'
+  }
 ];
 
-var columns = [
+var allCountriesColumns = [
   'geonameid',
   'name',
   'asciiname',
@@ -36,6 +41,13 @@ var columns = [
   'dem',
   'timezone',
   'modificationDate'
+];
+
+var adminCodeColumns = [
+  'code',
+  'name',
+  'asciiname',
+  'geonameid'
 ];
 
 var adminKeys = [
@@ -58,36 +70,41 @@ function downloadGeoNamesFile(dir, filename, callback) {
     });
 }
 
+function readAdminCodes(path, adminCodes, callback) {
+  H(fs.createReadStream(path))
+    .split()
+    .compact()
+    .map(R.split('\t'))
+    .map(R.zipObj(adminCodeColumns))
+    .each(function(obj) {
+      adminCodes[obj.code] = obj;
+    })
+    .errors(function(err) {
+      callback(err);
+    })
+    .done(function() {
+      callback();
+    });
+}
+
 function getAdminCodes(config, dir, callback) {
   var adminCodes = {
     admin1: {},
     admin2: {}
   };
 
-  async.eachSeries(adminCodesFilenames, function(adminCodesFilename, callback) {
-    fs.createReadStream(path.join(dir, adminCodesFilename), {
-      encoding: 'utf8'
+  H(adminCodesFiles)
+    .map(function(adminCodeFile) {
+      return H.curry(readAdminCodes, path.join(dir, adminCodeFile.filename), adminCodes[adminCodeFile.key]);
     })
-    .pipe(csv.parse({
-      delimiter: '\t',
-      quote: '\0',
-      columns: ['code', 'name', 'asciiname', 'geonameid']
-    }))
-    .on('data', function(obj) {
-      var adminLevel = adminCodesFilename.replace('CodesASCII.txt', '').replace('Codes.txt', '');
-      adminCodes[adminLevel][obj.code] = obj;
-    })
-    .on('error', function(err) {
+    .nfcall([])
+    .parallel(2)
+    .errors(function(err) {
       callback(err);
     })
-    .on('finish', function() {
-      callback();
+    .done(function() {
+      callback(null, adminCodes)
     });
-  },
-
-  function(err) {
-    callback(err, adminCodes);
-  });
 }
 
 function getRelations(config, adminCodes, obj) {
@@ -217,7 +234,7 @@ function convert(config, dir, writer, callback) {
       H(fs.createReadStream(filename, {encoding: 'utf8'}))
         .split()
         .map(R.split('\t'))
-        .map(R.zipObj(columns))
+        .map(R.zipObj(allCountriesColumns))
         .filter(function(row) {
           return R.flip(R.any)(config.filters)(R.curry(filterRow)(R.__, row, extraUris))
         })
