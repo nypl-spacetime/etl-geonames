@@ -219,9 +219,6 @@ function convert(config, dir, writer, callback) {
         .map(R.split('\t'))
         .map(R.zipObj(columns))
         .filter(function(row) {
-          // R.any()
-          // console.log(R.flip(R.any)(config.filters)(R.curry(filterRow)(R.__, row)))
-          // return false;
           return R.flip(R.any)(config.filters)(R.curry(filterRow)(R.__, row, extraUris))
         })
         .map(function(row) {
