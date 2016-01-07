@@ -38,14 +38,13 @@ var columns = [
   'modificationDate'
 ];
 
-var types = {
-  PCLI: 'hg:Country',
-  ADM1: 'hg:Province',
-  ADM2: 'hg:Municipality',
-  PPLX: 'hg:Neighbourhood',
-  PPL: 'hg:Place',
-  CNL: 'hg:Water'
-};
+var adminKeys = [
+  'countryCode',
+  'admin1Code',
+  'admin2Code',
+  'admin3Code',
+  'admin4Code'
+];
 
 function downloadGeoNamesFile(dir, filename, callback) {
   request
@@ -75,10 +74,8 @@ function getAdminCodes(config, dir, callback) {
       columns: ['code', 'name', 'asciiname', 'geonameid']
     }))
     .on('data', function(obj) {
-      if (config.countries.indexOf(obj.code.substring(0, 2)) > -1) {
-        var adminLevel = adminCodesFilename.replace('CodesASCII.txt', '').replace('Codes.txt', '');
-        adminCodes[adminLevel][obj.code] = obj;
-      }
+      var adminLevel = adminCodesFilename.replace('CodesASCII.txt', '').replace('Codes.txt', '');
+      adminCodes[adminLevel][obj.code] = obj;
     })
     .on('error', function(err) {
       callback(err);
@@ -93,57 +90,37 @@ function getAdminCodes(config, dir, callback) {
   });
 }
 
-function getRelations(adminCodes, obj) {
+function getRelations(config, adminCodes, obj) {
   var relations = [];
-  if (obj.countryCode === 'NL') {
-    if (obj.featureCode === 'ADM1') {
-      // Province
-      relations = [
-        {
-          from: baseUri + obj.geonameid,
-          to: baseUri + 2750405,
-          type: 'hg:liesIn'
-        }
-      ];
-    } else if (obj.featureCode === 'ADM2' && obj.admin1Code) {
-      // Municipality
-      relations = [
-        {
-          from: baseUri + obj.geonameid,
-          to: baseUri + adminCodes.admin1[obj.countryCode + '.' + obj.admin1Code].geonameid,
-          type: 'hg:liesIn'
-        }
-      ];
-    } else if (obj.featureCode.indexOf('PPL') === 0 && obj.admin1Code && obj.admin2Code) {
-      var parentObj = adminCodes.admin2[obj.countryCode + '.' + obj.admin1Code + '.' + obj.admin2Code];
 
-      // Place
-      if (parentObj && parentObj.geonameid) {
-        relations = [
-          {
-            from: baseUri + obj.geonameid,
-            to: baseUri + parentObj.geonameid,
-            type: 'hg:liesIn'
-          }
-        ];
-      } else {
-        relations = [];
-      }
+  var codes = R.filter(R.identity, R.values(R.pick(adminKeys, obj)))
+  if (codes.length === 3) {
+    var parentObj = adminCodes.admin2[codes.join('.')];
+
+    if (obj.geonameid === parentObj.geonameid) {
+      parentObj = adminCodes.admin1[codes.slice(0, 2).join('.')];
     }
+
+    relations = [
+      {
+        from: baseUri + obj.geonameid,
+        to: baseUri + parentObj.geonameid,
+        type: config.relations.liesIn
+      }
+    ];
   }
 
-  // else if (obj.countryCode === 'BE') {
-  //   // TODO: Belgian hierarchy!
-  // }
+  // TODO: add support for admin1 -> country relations!
+
   return relations;
 }
 
-function process(writer, row, adminCodes, callback) {
+function process(config, writer, row, adminCodes, callback) {
   var type;
   var featureCode = row.featureCode;
 
   while (featureCode.length > 0 && !type) {
-    type = types[featureCode];
+    type = config.types[featureCode];
     featureCode = featureCode.slice(0, -1);
   }
 
@@ -178,7 +155,7 @@ function process(writer, row, adminCodes, callback) {
       obj: pit
     });
 
-    data = data.concat(getRelations(adminCodes, row).map(function(relation) {
+    data = data.concat(getRelations(config, adminCodes, row).map(function(relation) {
       return {
         type: 'relation',
         obj: relation
@@ -191,6 +168,10 @@ function process(writer, row, adminCodes, callback) {
   } else {
     callback();
   }
+}
+
+function filterRow(filter, row, extraUris) {
+  return R.whereEq(filter, row) || extraUris[row.geonameid];
 }
 
 function download(config, dir, writer, callback) {
@@ -238,10 +219,13 @@ function convert(config, dir, writer, callback) {
         .map(R.split('\t'))
         .map(R.zipObj(columns))
         .filter(function(row) {
-          return R.contains(row.countryCode, config.countries) || extraUris[row.geonameid];
+          // R.any()
+          // console.log(R.flip(R.any)(config.filters)(R.curry(filterRow)(R.__, row)))
+          // return false;
+          return R.flip(R.any)(config.filters)(R.curry(filterRow)(R.__, row, extraUris))
         })
         .map(function(row) {
-          return H.curry(process, writer, row, adminCodes);
+          return H.curry(process, config, writer, row, adminCodes);
         })
         .nfcall([])
         .series()
