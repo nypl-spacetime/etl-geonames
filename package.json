@@ -1,15 +1,13 @@
 {
-  "name": "histograph-data-geonames",
+  "name": "spacetime-etl-geonames",
   "version": "0.6.0",
   "description": "Download and convert GeoNames data to Histograph NDJSON",
   "main": "geonames.js",
   "devDependencies": {
-    "jscs": "^1.10.0",
-    "jshint": "^2.6.0",
-    "tape": "^3.4.0"
+    "standard": "^6.0.8"
   },
   "scripts": {
-    "test": "jshint *.js && jscs *.js"
+    "test": "standard"
   },
   "author": "Bert Spaan",
   "license": "MIT",
@@ -18,18 +16,5 @@
     "ramda": "^0.18.0",
     "request": "^2.67.0",
     "yauzl": "^2.4.1"
-  },
-  "jshintConfig": {
-    "node": true,
-    "globalstrict": false,
-    "undef": true,
-    "unused": true,
-    "noarg": true
-  },
-  "jscsConfig": {
-    "preset": "airbnb",
-    "requireCamelCaseOrUpperCaseIdentifiers": null,
-    "disallowMultipleVarDecl": true,
-    "requireMultipleVarDecl": null
   }
 }

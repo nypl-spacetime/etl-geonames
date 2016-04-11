@@ -5,7 +5,17 @@
   "description": "The GeoNames geographical database covers all countries and contains over eight million placenames that are available for download free of charge.",
   "author": "GeoNames",
   "website": "http://www.geonames.org/",
-  "edits": "",
   "editor": "Histograph",
-  "creationDate": ""
+  "@context": {
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "gn": "http://www.geonames.org/ontology#",
+    "featureClass": {
+      "@id": "gn:featureClass",
+      "@type": "xsd:string"
+    },
+    "featureCode": {
+      "@id": "gn:featureCode",
+      "@type": "xsd:string"
+    }
+  }
 }
