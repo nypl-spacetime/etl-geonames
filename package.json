@@ -1,6 +1,6 @@
 {
   "name": "spacetime-etl-geonames",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Download and convert GeoNames data to Histograph NDJSON",
   "main": "geonames.js",
   "devDependencies": {

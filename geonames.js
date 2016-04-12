@@ -229,7 +229,9 @@ function transform (config, dirs, tools, callback) {
 
     var filename = path.join(dirs.previous, 'allCountries.txt')
 
-    var extraUris = {}(config.extraUris ? require(config.extraUris) : []).forEach(function (uri) {
+    var extraUriList = (config.extraUris ? require(config.extraUris) : [])
+    var extraUris = {}
+    extraUriList .forEach((uri) => {
       var id = uri.replace('http://sws.geonames.org/', '')
       extraUris[id] = true
     })
